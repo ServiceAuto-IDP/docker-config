@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  kong:
+    image: kong:latest
+    volumes:
+      - ./kong.yaml:/usr/local/kong/declarative/kong.yaml
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/declarative/kong.yaml
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_DNS_RESOLVER: "127.0.0.11"
+      KONG_DNS_ORDER: "LAST,A,CNAME"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    networks:
+      - public-net
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  frontend-ui:
+    image: savupaul/serviceauto-frontend-ui:latest
+    ports:
+      - "8080:80"
+    networks:
+      - public-net
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  auth-service:
+    image: savupaul/serviceauto-auth:latest
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth-db:5432/auth_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+    networks:
+      - public-net
+      - auth-db-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  auth-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    networks:
+      - auth-db-net
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints: [node.role == worker]
+
+  client-service:
+    image: savupaul/serviceauto-client:latest
+    environment:
+      - IO_SERVICE_BASE_URL=http://io-service:8080
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://client-db:5432/client_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+    networks:
+      - public-net
+      - internal-net
+      - io-db-net
+    deploy:
+      placement:
+        constraints: [ node.role == worker ]
+
+  processing-service:
+    image: savupaul/serviceauto-processing:latest
+    networks:
+      - internal-net
+    deploy:
+      replicas: 1
+
+  io-service:
+    image: savupaul/serviceauto-io:latest
+    environment:
+      - APP_DB_URL=jdbc:postgresql://io-db:5432/io_db
+      - APP_DB_USERNAME=admin
+      - APP_DB_PASSWORD=admin
+    networks:
+      - internal-net
+      - io-db-net
+    deploy:
+      replicas: 1
+
+  io-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: io_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    networks:
+      - io-db-net
+    volumes:
+      - io_postgres_data:/var/lib/postgresql/data
+    deploy:
+      placement:
+        constraints: [ node.role == worker ]
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    networks:
+      - internal-net
+    deploy:
+      placement:
+        constraints: [ node.role == worker ]
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "9090:8080"
+    networks:
+      - auth-db-net
+      - io-db-net
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+networks:
+  public-net:
+    driver: overlay
+    attachable: true
+  internal-net:
+    driver: overlay
+    attachable: true
+  auth-db-net:
+    driver: overlay
+    attachable: true
+  io-db-net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  auth_postgres_data:
+  client_postgres_data:
+  io_postgres_data:

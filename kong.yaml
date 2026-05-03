@@ -1,0 +1,52 @@
+_format_version: "1.1"
+_transform: true
+
+services:
+  # 1. Auth Service
+  - name: auth-service
+    url: http://auth-service:8080
+    routes:
+      - name: auth-route
+        paths:
+          - /user
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+
+  # 2. Client Service
+  - name: client-service
+    url: http://client-service:8080
+    routes:
+      - name: client-route
+        paths:
+          - /api/client
+        strip_path: false
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+plugins:
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-Type
+        - Authorization
+      credentials: true
+      max_age: 3600
