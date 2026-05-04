@@ -82,8 +82,18 @@ services:
 
   processing-service:
     image: savupaul/serviceauto-processing:latest
+    environment:
+      - IO_SERVICE_BASE_URL=http://io-service:8080
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - SPRING_RABBITMQ_USERNAME=guest
+      - SPRING_RABBITMQ_PASSWORD=guest
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://client-db:5432/client_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
     networks:
       - internal-net
+      - io-db-net
     deploy:
       replicas: 1
 
