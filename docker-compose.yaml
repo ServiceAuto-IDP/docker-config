@@ -76,6 +76,7 @@ services:
       - public-net
       - internal-net
       - io-db-net
+      - monitoring-net
     deploy:
       placement:
         constraints: [ node.role == worker ]
@@ -94,6 +95,7 @@ services:
     networks:
       - internal-net
       - io-db-net
+      - monitoring-net
     deploy:
       replicas: 1
 
@@ -106,6 +108,7 @@ services:
     networks:
       - internal-net
       - io-db-net
+      - monitoring-net
     deploy:
       placement:
         constraints:
@@ -171,6 +174,60 @@ services:
       placement:
         constraints: [ node.platform.os == linux ]
 
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - public-net
+      - monitoring-net
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+    networks:
+      - public-net
+      - monitoring-net
+    deploy:
+      placement:
+        constraints: [ node.role == manager ]
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - monitoring-net
+    deploy:
+      mode: global
+      placement:
+        constraints: [ node.platform.os == linux ]
+
 networks:
   public-net:
     driver: overlay
@@ -187,9 +244,14 @@ networks:
   portainer-agent-net:
     driver: overlay
     attachable: true
+  monitoring-net:
+    driver: overlay
+    attachable: true
 
 volumes:
   auth_postgres_data:
   client_postgres_data:
   io_postgres_data:
   portainer_data:
+  prometheus_data:
+  grafana_data:

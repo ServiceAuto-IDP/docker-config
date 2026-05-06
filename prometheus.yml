@@ -1,0 +1,40 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+
+  - job_name: serviceauto-client-service
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names:
+          - tasks.client-service
+        type: A
+        port: 8080
+
+  - job_name: serviceauto-io-service
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names:
+          - tasks.io-service
+        type: A
+        port: 8080
+
+  - job_name: serviceauto-processing-service
+    metrics_path: /actuator/prometheus
+    dns_sd_configs:
+      - names:
+          - tasks.processing-service
+        type: A
+        port: 8080
+
+  - job_name: node-exporter
+    dns_sd_configs:
+      - names:
+          - tasks.node-exporter
+        type: A
+        port: 9100
