@@ -109,10 +109,6 @@ services:
       - internal-net
       - io-db-net
       - monitoring-net
-    deploy:
-      placement:
-        constraints:
-          - node.role == manager
 
   io-db:
     image: postgres:16-alpine
@@ -126,7 +122,7 @@ services:
       - io_postgres_data:/var/lib/postgresql/data
     deploy:
       placement:
-        constraints: [ node.role == worker ]
+        constraints: [ node.role == manager ]
 
   rabbitmq:
     image: rabbitmq:3-management
